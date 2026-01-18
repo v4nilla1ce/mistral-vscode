@@ -1,0 +1,136 @@
+{
+  "name": "mistral-vscode",
+  "displayName": "Mistral AI",
+  "description": "AI-powered coding assistant using Mistral AI models",
+  "version": "0.1.0",
+  "publisher": "mistral-ai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mistral-ai/mistral-vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "mistral",
+    "ai",
+    "assistant",
+    "code",
+    "chat"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mistral",
+          "title": "Mistral AI",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mistral": [
+        {
+          "type": "webview",
+          "id": "mistral.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "mistral.newChat",
+        "title": "New Chat",
+        "category": "Mistral"
+      },
+      {
+        "command": "mistral.addContext",
+        "title": "Add File to Context",
+        "category": "Mistral"
+      },
+      {
+        "command": "mistral.clearContext",
+        "title": "Clear Context",
+        "category": "Mistral"
+      },
+      {
+        "command": "mistral.settings",
+        "title": "Settings",
+        "category": "Mistral"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "mistral.addContext",
+          "group": "mistral"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "mistral.addContext",
+          "group": "mistral"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Mistral AI",
+      "properties": {
+        "mistral.model": {
+          "type": "string",
+          "default": "mistral-small",
+          "enum": [
+            "mistral-tiny",
+            "mistral-small",
+            "mistral-medium",
+            "mistral-large",
+            "codestral-latest"
+          ],
+          "description": "The Mistral model to use for completions"
+        },
+        "mistral.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to mistral CLI executable (leave empty to use PATH)"
+        },
+        "mistral.autoConfirmSafe": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-confirm read-only tool operations"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run build:extension && npm run build:webview",
+    "build:extension": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "build:webview": "cd src/webview && npm run build",
+    "watch": "npm run watch:extension & npm run watch:webview",
+    "watch:extension": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch",
+    "watch:webview": "cd src/webview && npm run dev",
+    "lint": "eslint src --ext ts,tsx",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.8",
+    "esbuild": "^0.27.2",
+    "eslint": "^8.50.0",
+    "typescript": "^5.3.0"
+  }
+}
