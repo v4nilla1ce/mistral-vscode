@@ -1,1 +1,202 @@
-# mistral-vscode
+# Mistral VS Code Extension
+
+A Visual Studio Code extension that provides a rich graphical interface for [mistral-cli](https://github.com/v4nilla1ce/mistral-cli), bringing AI-powered coding assistance directly into your editor.
+
+## Features
+
+- **Chat Interface**: Conversational AI assistant in your sidebar
+- **Agent Mode**: Autonomous task execution with tool confirmation
+- **Context Management**: Add files to context with token usage tracking
+- **Streaming Responses**: Real-time token streaming with markdown rendering
+- **Code Actions**: Copy or apply code blocks directly to your editor
+- **Tool Confirmation**: Review and approve/deny tool calls before execution
+- **Auto-Reconnection**: Resilient connection handling with automatic recovery
+
+## Requirements
+
+- **VS Code** 1.85.0 or higher
+- **mistral-cli** 0.9.0 or higher (with `server` command)
+- **Mistral API key** configured in mistral-cli
+
+## Installation
+
+### 1. Install mistral-cli
+
+```bash
+# Option A: Install from source (recommended for development)
+git clone https://github.com/v4nilla1ce/mistral-cli.git
+cd mistral-cli
+pip install -e .
+
+# Option B: Install with pipx
+pipx install git+https://github.com/v4nilla1ce/mistral-cli.git
+```
+
+### 2. Configure API Key
+
+```bash
+mistral config setup
+```
+
+### 3. Install Extension
+
+**From VSIX (local build):**
+```bash
+cd mistral-vscode
+npm install
+npm run build
+# Then install the generated .vsix file in VS Code
+```
+
+**From Marketplace:** *(coming soon)*
+
+## Usage
+
+1. Click the **Mistral AI** icon in the Activity Bar (left sidebar)
+2. Type a message and press **Send** or hit Enter
+3. Toggle between **Chat** and **Agent** mode:
+   - **Chat**: Simple conversation, no tool execution
+   - **Agent**: Can read/write files and run commands
+
+### Adding Context
+
+- **Command Palette**: `Mistral: Add File to Context`
+- **Right-click** a file in Explorer → `Add File to Context`
+- Files appear in the collapsible Context Panel with token counts
+
+### Tool Confirmation
+
+When in Agent mode, dangerous operations (file writes, shell commands) require confirmation:
+- Click **Allow** to proceed
+- Click **Deny** to cancel the operation
+
+### Code Blocks
+
+AI responses with code blocks include action buttons:
+- **Copy**: Copy code to clipboard
+- **Apply**: Insert code at cursor or replace selection
+
+## Extension Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `mistral.model` | `mistral-small` | Model to use for completions |
+| `mistral.cliPath` | `""` | Path to mistral CLI (leave empty for PATH) |
+| `mistral.autoConfirmSafe` | `true` | Auto-confirm read-only operations |
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `Mistral: New Chat` | Clear chat and start fresh |
+| `Mistral: Add File to Context` | Add active file to context |
+| `Mistral: Clear Context` | Remove all context files |
+| `Mistral: Settings` | Open extension settings |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    VS Code Extension                     │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ extension.ts│  │ rpc.ts       │  │ Sidebar       │  │
+│  │ (entry)     │  │ (JSON-RPC)   │  │ Provider      │  │
+│  └─────────────┘  └──────────────┘  └───────────────┘  │
+│         │                │                  │           │
+│         └────────────────┼──────────────────┘           │
+│                          │                              │
+│                    ┌─────▼─────┐                        │
+│                    │  Webview  │                        │
+│                    │  (React)  │                        │
+│                    └─────┬─────┘                        │
+└──────────────────────────┼──────────────────────────────┘
+                           │ stdio (JSON-RPC)
+                    ┌──────▼──────┐
+                    │ mistral     │
+                    │ server      │
+                    │ (Python)    │
+                    └─────────────┘
+```
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+cd src/webview && npm install && cd ../..
+
+# Build extension
+npm run build
+
+# Watch mode (development)
+npm run watch
+
+# Launch Extension Development Host
+# Press F5 in VS Code
+```
+
+### Project Structure
+
+```
+mistral-vscode/
+├── src/
+│   ├── extension.ts          # Extension entry point
+│   ├── client/
+│   │   └── rpc.ts            # JSON-RPC client
+│   ├── panels/
+│   │   └── MistralSidebarProvider.ts
+│   └── webview/              # React app
+│       ├── src/
+│       │   ├── App.tsx
+│       │   └── components/
+│       │       ├── ChatMessage.tsx
+│       │       ├── CodeBlock.tsx
+│       │       ├── InputArea.tsx
+│       │       ├── ContextPanel.tsx
+│       │       └── ToolConfirmation.tsx
+│       ├── package.json
+│       └── vite.config.ts
+├── package.json              # Extension manifest
+└── tsconfig.json
+```
+
+## Troubleshooting
+
+### "Mistral CLI not found"
+
+Ensure `mistral` is in your PATH:
+```bash
+mistral --version
+# Should show 0.9.0 or higher
+```
+
+Or configure the full path in settings:
+```json
+{
+  "mistral.cliPath": "C:\\Users\\...\\Scripts\\mistral.exe"
+}
+```
+
+### "No such command 'server'"
+
+Update mistral-cli to v0.9.0+:
+```bash
+cd /path/to/mistral-cli
+git pull
+pip install -e .
+```
+
+### Connection keeps failing
+
+Check the Debug Console (View → Debug Console) for error messages. Common issues:
+- Multiple mistral installations (use `where mistral` / `which mistral`)
+- Missing API key (run `mistral config setup`)
+
+## License
+
+MIT
+
+## Related
+
+- [mistral-cli](https://github.com/v4nilla1ce/mistral-cli) - The CLI backend
+- [Mistral AI](https://mistral.ai/) - AI models powering the assistant
