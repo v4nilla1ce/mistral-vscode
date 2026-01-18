@@ -256,6 +256,17 @@ export class MistralRpcClient extends EventEmitter {
     if (!this.isConnected) {
       throw new Error("Not connected to server");
     }
+    return this._call(method, params);
+  }
+
+  /**
+   * Internal call method that doesn't check connection state.
+   * Used during initialization.
+   */
+  private async _call(method: string, params: Record<string, unknown>): Promise<unknown> {
+    if (!this.process?.stdin?.writable) {
+      throw new Error("Process not ready");
+    }
 
     const id = ++this.requestId;
     const request: JsonRpcRequest = {
@@ -334,7 +345,7 @@ export class MistralRpcClient extends EventEmitter {
   }
 
   private async initialize(): Promise<void> {
-    const result = await this.call("initialize", {});
+    const result = await this._call("initialize", {});
     if (!result) {
       throw new Error("Failed to initialize server");
     }
