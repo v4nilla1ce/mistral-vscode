@@ -2,7 +2,7 @@
   "name": "mistral-vscode",
   "displayName": "Mistral AI",
   "description": "AI-powered coding assistant using Mistral AI models",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "mistral-ai",
   "license": "MIT",
   "repository": {
@@ -107,6 +107,36 @@
           "type": "boolean",
           "default": true,
           "description": "Auto-confirm read-only tool operations"
+        },
+        "mistral.apply.previewMode": {
+          "type": "string",
+          "enum": [
+            "always",
+            "edits_only",
+            "never"
+          ],
+          "default": "edits_only",
+          "description": "When to show diff preview before applying code"
+        },
+        "mistral.apply.autoDetectIntent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically classify code blocks as create/edit/command"
+        },
+        "mistral.apply.createFileLocation": {
+          "type": "string",
+          "enum": [
+            "workspace_root",
+            "current_folder",
+            "ask"
+          ],
+          "default": "ask",
+          "description": "Where to create new files"
+        },
+        "mistral.apply.showFallbackWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show warnings when using cursor position as fallback"
         }
       }
     }

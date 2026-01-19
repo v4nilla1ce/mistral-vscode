@@ -9,6 +9,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { ConnectionState, MistralRpcClient, RpcEvents } from "../client/rpc";
+import { SmartApplyService, ApplyPayload } from "../services";
 
 /**
  * Messages sent from the webview to the extension.
@@ -26,13 +27,16 @@ export class MistralSidebarProvider implements vscode.WebviewViewProvider {
 
   private _view?: vscode.WebviewView;
   private _client?: MistralRpcClient;
+  private _smartApply: SmartApplyService;
   private _disposables: vscode.Disposable[] = [];
   private _fileWatchers = new Map<string, vscode.FileSystemWatcher>();
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _context: vscode.ExtensionContext
-  ) {}
+  ) {
+    this._smartApply = new SmartApplyService();
+  }
 
   /**
    * Called when the webview is first created.
@@ -81,6 +85,7 @@ export class MistralSidebarProvider implements vscode.WebviewViewProvider {
    */
   public dispose(): void {
     this._client?.disconnect();
+    this._smartApply.dispose();
     this._fileWatchers.forEach((watcher) => watcher.dispose());
     this._fileWatchers.clear();
     this._disposables.forEach((d) => d.dispose());
@@ -292,10 +297,24 @@ export class MistralSidebarProvider implements vscode.WebviewViewProvider {
         break;
 
       case "applyCode":
-        await this._applyCodeToEditor(
-          message.code as string,
-          message.language as string
-        );
+        // Legacy support: convert to new format
+        await this._handleApplyUpdate({
+          code: message.code as string,
+          language: message.language as string || "plaintext",
+          intent: "edit", // Default to edit for backward compatibility
+        });
+        break;
+
+      case "applyUpdate":
+        await this._handleApplyUpdate(message.payload as ApplyPayload | ApplyPayload[]);
+        break;
+
+      case "acceptChange":
+        await this._smartApply.acceptChange(message.changeId as string);
+        break;
+
+      case "rejectChange":
+        await this._smartApply.rejectChange(message.changeId as string);
         break;
 
       case "copyCode":
@@ -385,26 +404,49 @@ export class MistralSidebarProvider implements vscode.WebviewViewProvider {
     this._fileWatchers.set(filePath, watcher);
   }
 
-  private async _applyCodeToEditor(code: string, language?: string): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
+  /**
+   * Handle the new applyUpdate message with smart code application.
+   */
+  private async _handleApplyUpdate(payload: ApplyPayload | ApplyPayload[]): Promise<void> {
+    try {
+      const result = await this._smartApply.apply(payload);
 
-    if (editor && editor.selection && !editor.selection.isEmpty) {
-      // Replace selection
-      await editor.edit((editBuilder) => {
-        editBuilder.replace(editor.selection, code);
+      // Notify webview of the result
+      this._postMessage({
+        type: "applyResult",
+        success: result.success,
+        action: result.action,
+        message: result.message,
+        changeId: result.changeId,
       });
-    } else if (editor) {
-      // Insert at cursor
-      await editor.edit((editBuilder) => {
-        editBuilder.insert(editor.selection.active, code);
+
+      // Show appropriate message based on action
+      if (result.success) {
+        switch (result.action) {
+          case "created":
+            vscode.window.showInformationMessage(result.message || "File created");
+            break;
+          case "sent_to_terminal":
+            vscode.window.showInformationMessage(result.message || "Command sent to terminal");
+            break;
+          case "preview_shown":
+            // Preview is shown, user will accept/reject
+            break;
+          case "edited":
+            vscode.window.showInformationMessage(result.message || "Code applied");
+            break;
+        }
+      } else if (result.action !== "cancelled") {
+        vscode.window.showErrorMessage(result.message || "Failed to apply code");
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to apply code: ${error}`);
+      this._postMessage({
+        type: "applyResult",
+        success: false,
+        action: "error",
+        message: String(error),
       });
-    } else {
-      // Create new untitled file
-      const doc = await vscode.workspace.openTextDocument({
-        content: code,
-        language: language || "plaintext",
-      });
-      await vscode.window.showTextDocument(doc);
     }
   }
 

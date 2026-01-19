@@ -135,6 +135,41 @@ npm run watch
 # Press F5 in VS Code
 ```
 
+### Mock Server for UI Testing
+
+A mock CLI server is included for testing the extension UI without a real Mistral backend:
+
+```bash
+# Run the mock server test suite
+node src/mock/test-mock-server.js
+```
+
+**To use the mock server:**
+
+1. Set the CLI path in VS Code settings:
+   ```json
+   {
+     "mistral.cliPath": "node /path/to/mistral-vscode/src/mock/mock-server.js"
+   }
+   ```
+
+2. Reload VS Code and open the Mistral sidebar
+
+3. Test various messages:
+   | Message | Expected Result |
+   |---------|-----------------|
+   | `create a python file called main.py` | Python code with "Create File" button |
+   | `npm install express` | Bash command with "Run in Terminal" button |
+   | `refactor this function` | TypeScript snippet with "Preview & Apply" button |
+   | `create a new typescript file` | TypeScript code with "Create File" button |
+
+The mock server supports:
+- Chat mode with intent-based responses
+- Agent mode with tool confirmation flow
+- Streaming responses
+- All RPC methods (`chat`, `agent.run`, `agent.confirm`, `context.*`, `model.*`)
+- **100% Compliance** with the [Mock Server Protocol Test Suite](src/mock/tests/index.js) (including intent detection and error handling)
+
 ### Project Structure
 
 ```
@@ -145,6 +180,14 @@ mistral-vscode/
 │   │   └── rpc.ts            # JSON-RPC client
 │   ├── panels/
 │   │   └── MistralSidebarProvider.ts
+│   ├── services/             # Smart Apply services
+│   │   ├── IntentDetector.ts     # Code block intent classification
+│   │   ├── SymbolResolver.ts     # LSP symbol lookup
+│   │   ├── DiffPreviewService.ts # Diff preview management
+│   │   └── SmartApplyService.ts  # Central apply orchestrator
+│   ├── mock/                 # Testing utilities
+│   │   ├── mock-server.js        # Mock CLI for UI testing
+│   │   └── test-mock-server.js   # Automated test suite
 │   └── webview/              # React app
 │       ├── src/
 │       │   ├── App.tsx

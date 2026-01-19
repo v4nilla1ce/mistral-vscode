@@ -32,6 +32,22 @@ interface PendingTool {
   arguments: Record<string, unknown>;
 }
 
+// Smart Apply types
+type ApplyIntent = "create" | "edit" | "command";
+
+interface ApplyPayload {
+  code: string;
+  language: string;
+  intent: ApplyIntent;
+  target?: string;
+  anchor?: string;
+}
+
+interface PendingChange {
+  changeId: string;
+  code: string;
+}
+
 type ConnectionState = "connected" | "disconnected" | "connecting" | "reconnecting" | "error";
 
 function App() {
@@ -41,6 +57,7 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [pendingTool, setPendingTool] = useState<PendingTool | null>(null);
+  const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
   const [thinkingStep, setThinkingStep] = useState<string | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
   const [useAgent, setUseAgent] = useState(false);
@@ -157,6 +174,17 @@ function App() {
           setIsStreaming(false);
           setStreamingContent("");
           break;
+
+        case "applyResult":
+          if (message.action === "preview_shown" && message.changeId) {
+            setPendingChange({
+              changeId: message.changeId as string,
+              code: "", // Code is already in the preview
+            });
+          } else {
+            setPendingChange(null);
+          }
+          break;
       }
     };
 
@@ -214,13 +242,46 @@ function App() {
     });
   }, []);
 
-  const handleApplyCode = useCallback((code: string, language?: string) => {
-    vscode.postMessage({
-      type: "applyCode",
+  const handleApplyCode = useCallback((
+    code: string,
+    language?: string,
+    intent?: ApplyIntent,
+    target?: string,
+    anchor?: string
+  ) => {
+    const payload: ApplyPayload = {
       code,
-      language,
+      language: language || "plaintext",
+      intent: intent || "edit",
+      target,
+      anchor,
+    };
+
+    vscode.postMessage({
+      type: "applyUpdate",
+      payload,
     });
   }, []);
+
+  const handleAcceptChange = useCallback(() => {
+    if (pendingChange) {
+      vscode.postMessage({
+        type: "acceptChange",
+        changeId: pendingChange.changeId,
+      });
+      setPendingChange(null);
+    }
+  }, [pendingChange]);
+
+  const handleRejectChange = useCallback(() => {
+    if (pendingChange) {
+      vscode.postMessage({
+        type: "rejectChange",
+        changeId: pendingChange.changeId,
+      });
+      setPendingChange(null);
+    }
+  }, [pendingChange]);
 
   const handleCopyCode = useCallback((code: string) => {
     vscode.postMessage({
@@ -288,6 +349,22 @@ function App() {
             onConfirm={() => handleConfirmTool(true)}
             onDeny={() => handleConfirmTool(false)}
           />
+        )}
+
+        {pendingChange && (
+          <div className="pending-change">
+            <div className="pending-change-header">
+              <span>Preview changes ready</span>
+            </div>
+            <div className="pending-change-actions">
+              <button className="accept-btn" onClick={handleAcceptChange}>
+                Accept Changes
+              </button>
+              <button className="reject-btn" onClick={handleRejectChange}>
+                Reject
+              </button>
+            </div>
+          </div>
         )}
 
         {isStreaming && streamingContent && (
